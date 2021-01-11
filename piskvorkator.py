@@ -5,7 +5,7 @@ Created on Wed Dec 30 17:51:22 2020
 @author: Hatch
 """
 
-import gameboard
+import gameboard as gb
 import requests
 import sys
 import time
@@ -13,7 +13,6 @@ import configparser
 import logging
 import os
 import getopt
-from sty import fg, rs
 
 class Piskvorkator():
     def __init__(self,debug):
@@ -22,7 +21,7 @@ class Piskvorkator():
         self.game_in_progress = 0
         self.logger = logging.getLogger('piskvorkator')
         self.logger.setLevel(logging.DEBUG)
-        
+
     def start_game(self,force_game,force_reg):       
         if not os.path.exists('piskvorkator.ini'):
             self.config.add_section('config')
@@ -44,7 +43,7 @@ class Piskvorkator():
             with open('piskvorkator.ini', 'w') as configfile:
                 self.config.write(configfile)
                 
-            print(fg(15)+'Configuration file was not found, created new!'+fg.rs)
+            gb.custom_print('Configuration file was not found, created new!',15)
 
         self.config.read('piskvorkator.ini')
         self.player_token = self.config['config']['player_token']
@@ -55,27 +54,27 @@ class Piskvorkator():
         
         if len(self.config['saved']['game_token'])!=0:
             if force_game:
-                print(fg(10)+'Saved game abandoned!'+fg.rs)   
+                gb.custom_print('Saved game abandoned!',10)   
             else:
-                print(fg(10)+'Saved game found!'+fg.rs)
+                gb.custom_print('Saved game found!',10)
                 return 4
         
         response = requests.post(self.address+'/api/v1/connect', json={'userToken':self.player_token})
         content = response.json()
         
         if response.status_code==201:
-            print(fg(10)+'New game successfully started!'+fg.rs)
+            gb.custom_print('New game successfully started!',10)
             self.game_token = content['gameToken']
             self.config['saved']['game_token'] = content['gameToken']
             with open('piskvorkator.ini', 'w') as configfile:
                 self.config.write(configfile)
                 
-            self.gb = gameboard.Gameboard((40,58),self.debug,self.logger)  
+            self.gb = gb.Gameboard((41,59),self.debug,self.logger)  
             self.game_in_progress = 1
             self.configure_logger()
             return 1
         else:
-            print(fg(9)+'Something went wrong! {}'.format(content['errors'])+fg.rs)
+            gb.custom_print('Something went wrong! {}'.format(content['errors']),9)
             return 0
      
     def check_status(self):
@@ -88,18 +87,18 @@ class Piskvorkator():
             self.configure_ai()
             
             if content['playerCrossId']==None or content['playerCircleId']==None:
-                print(fg(15)+'Connected, waiting for opponent...'+fg.rs)
+                gb.custom_print('Connected, waiting for opponent...',15)
                 return 1
             else:
-                print(fg(10)+'Game started!'+fg.rs)
+                gb.custom_print('Game started!',10)
                 return 2
 
         elif response.status_code==226:
             self.game_in_progress = 0
-            print(fg(10)+'Game already ended!'+fg.rs)
+            gb.custom_print('Game already ended!',10)
             return 5
         else:
-            print(fg(9)+'Something went wrong! {}'.format(content['errors'])+fg.rs)
+            gb.custom_print('Something went wrong! {}'.format(content['errors']),9)
             return 0  
     
     def check_if_opponent_played(self):
@@ -109,26 +108,26 @@ class Piskvorkator():
         if response.status_code==200:
             if content['actualPlayerId']==self.player_id:
                 if len(content['coordinates'])==0:
-                    print(fg(14)+'I start the game...'+fg.rs)
+                    gb.custom_print('I start the game...',14)
                 else:
                     if content['coordinates'][0]['playerId']!=self.player_id:
                         coordinates = (content['coordinates'][0]['x'],content['coordinates'][0]['y'])
-                        print(fg(12)+'Opponent played on coordinates {}!'.format(coordinates)+fg.rs)
+                        gb.custom_print('Opponent played on coordinates {}!'.format(coordinates),12)
                         self.gb.place_symbol(self.opponent,self.translate_coordinates(coordinates,0))
                     else:
-                        print(fg(9)+'Jobs mixed up the turn order again...'+fg.rs)
+                        gb.custom_print('Jobs mixed up the turn order again...',9)
                         return 4
                 return 3
             else:
-                print(fg(12)+'Opponent haven\'t played yet, waiting...'+fg.rs)
+                gb.custom_print('Opponent haven\'t played yet, waiting...',12)
                 return 2
 
         elif response.status_code==226:
             self.game_in_progress = 0
-            print(fg(10)+'Game already ended!'+fg.rs)
+            gb.custom_print('Game already ended!',10)
             return 5
         else:
-            print(fg(9)+'Something went wrong! {}'.format(content['errors'])+fg.rs)
+            gb.custom_print('Something went wrong! {}'.format(content['errors']),9)
             return 0  
     
     def play(self):
@@ -138,23 +137,23 @@ class Piskvorkator():
         content = response.json()
         
         if response.status_code==201:
-            print(fg(14)+'I played on coordinates {}!'.format(jobs_coordinates)+fg.rs)
+            gb.custom_print('I played on coordinates {}!'.format(jobs_coordinates),14)
             self.gb.place_symbol(self.player,coordinates)
             return 2
         elif response.status_code==226:
             self.game_in_progress = 0
-            print(fg(10)+'Game already ended!'+fg.rs)
+            gb.custom_print('Game already ended!',10)
             return 5
         else:
-            print(fg(9)+'Something went wrong! {}'.format(content['errors'])+fg.rs)
+            gb.custom_print('Something went wrong! {}'.format(content['errors']),9)
             return 0
 
     def reconnect(self):
         if self.game_in_progress==0:
                 self.game_token = self.config['saved']['game_token']
         
-        print(fg(15)+'Attempting to reconnect...'+fg.rs)
-        self.gb = gameboard.Gameboard((40,58),self.debug,self.logger)
+        gb.custom_print('Attempting to reconnect...',15)
+        self.gb = gb.Gameboard((41,59),self.debug,self.logger)
         self.clear_log()
         self.configure_logger()
         response = requests.post(self.address+'/api/v1/checkStatus', json={'userToken':self.player_token,'gameToken':self.game_token})
@@ -167,12 +166,12 @@ class Piskvorkator():
                 self.configure_ai()
             
             if content['playerCrossId']==None or content['playerCircleId']==None:
-                print(fg(15)+'Connected, waiting for opponent...'+fg.rs)
+                gb.custom_print('Connected, waiting for opponent...',15)
                 self.game_in_progress = 1
                 return 1
             
             if len(content['coordinates'])==0:
-                print(fg(10)+'Game started!'+fg.rs)
+                gb.custom_print('Game started!',10)
                 self.game_in_progress = 1
                 return 2
                 
@@ -184,28 +183,28 @@ class Piskvorkator():
                 if pl==self.opponent: last_coordinates = coordinates
                 if self.game_in_progress==0:
                     if pl==self.player:
-                        print(fg(14)+'I played on coordinates {}!'.format(coordinates)+fg.rs)
+                        gb.custom_print('I played on coordinates {}!'.format(coordinates),14)
                     else:
-                        print(fg(12)+'Opponent played on coordinates {}!'.format(coordinates)+fg.rs)                        
+                        gb.custom_print('Opponent played on coordinates {}!'.format(coordinates),12)                        
                     
             if self.game_in_progress==1:
-                print(fg(12)+'Reconnected, opponents last play was on coordinates {}'.format(last_coordinates)+fg.rs)   
+                gb.custom_print('Reconnected, opponents last play was on coordinates {}'.format(last_coordinates),12)   
              
             if content['actualPlayerId']==self.player_id:
-                print(fg(14)+'It\'s my turn now...'+fg.rs)
+                gb.custom_print('It\'s my turn now...',14)
                 self.game_in_progress = 1
                 return 3
             else:
-                print(fg(12)+'It\'s opponents turn now, waiting...'+fg.rs)
+                gb.custom_print('It\'s opponents turn now, waiting...',12)
                 self.game_in_progress = 1
                 return 2
                     
         elif response.status_code==226:
             self.game_in_progress = 0
-            print(fg(10)+'Game already ended!'+fg.rs)
+            gb.custom_print('Game already ended!',10)
             return 5
         else:
-            print(fg(9)+'Something went wrong! {}'.format(content['errors'])+fg.rs)
+            gb.custom_print('Something went wrong! {}'.format(content['errors']),9)
             if self.game_in_progress==1:
                 self.config['saved']['game_token'] = ''
                 with open('piskvorkator.ini', 'w') as configfile:
@@ -217,12 +216,12 @@ class Piskvorkator():
         content = response.json()
         
         if content['winnerId']==None: 
-            print(fg(9)+'Something is weird, there is no winner...'+fg.rs)
+            gb.custom_print('Something is weird, there is no winner...',9)
             
         if content['winnerId']==self.player_id:
-            print(fg(11)+'I won! GG!'+fg.rs)
+            gb.custom_print('I won! GG!',11)
         else:
-            print(fg(9)+'I lost, I\'m sad...'+fg.rs)
+            gb.custom_print('I lost, I\'m sad...',9)
         
         self.config['saved']['game_token'] = ''
         with open('piskvorkator.ini', 'w') as configfile:
@@ -253,7 +252,7 @@ class Piskvorkator():
         if self.config['config']['player_token']!='' and self.config['config']['player_id']!='' and not force_reg:
             return 1
         
-        print(fg(15)+'New registration:')
+        gb.custom_print('New registration:',15)
         nickname = input('Input your nickname:')
         email = input('Input your email:'+fg.rs)
         
@@ -261,7 +260,7 @@ class Piskvorkator():
         content = response.json()
         
         if response.status_code==201:
-            print(fg(10)+'New user successfully created!'+fg.rs)
+            gb.custom_print('New user successfully created!',10)
             self.config['config']['player_token'] = content['userToken']
             self.config['config']['player_id'] = content['userId']
             with open('piskvorkator.ini', 'w') as configfile:
@@ -271,21 +270,20 @@ class Piskvorkator():
             self.player_id = self.config['config']['player_id']
             return 1
         else:
-            print(fg(9)+'Something went wrong! {}'.format(content['errors'])+fg.rs)
+            gb.custom_print('Something went wrong! {}'.format(content['errors']),9)
             return 0
-        
 
 if __name__ == '__main__':
     ps = Piskvorkator(0)
     force_game = False
     force_reg = False
     
-    msg = fg(9)+'Possible flags are -g to force new game even if one is saved and -r to force registration of new player!'+fg.rs   
+    msg = 'Possible flags are -g to force new game even if one is saved and -r to force registration of new player!'  
     if len(sys.argv)>1:
         try:
             opts, args = getopt.getopt(sys.argv[1:],"gr")
         except getopt.GetoptError:
-            print(msg)
+            gb.custom_print(msg,9)
             sys.exit()
             
         for opt, arg in opts:

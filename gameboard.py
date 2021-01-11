@@ -8,6 +8,7 @@ Created on Mon Dec 28 20:07:45 2020
 import numpy as np
 import math as m
 import random as r
+import time as t
 import logging
 from sty import fg, rs
 
@@ -45,12 +46,12 @@ class Gameboard():
 
     def place_symbol(self,player,coordinates):
         if self.completed:
-            print(fg(9)+'Symbol not placed, game is already concluded! Winner is player {}.'.format(int(self.winner))+fg.rs)
+            custom_print('Symbol not placed, game is already concluded! Winner is player {}.'.format(int(self.winner)),9)
             return 0, None
         
         self.board[0,coordinates[0],coordinates[1]] = player
         
-        if self.debug>0:print(fg(10)+'Player {} placed symbol on coordinates {}.'.format(int(player), coordinates)+fg.rs)
+        if self.debug>0:custom_print('Player {} placed symbol on coordinates {}.'.format(int(player), coordinates),10)
         self.logger.debug('gb.place_symbol({},{})'.format(int(player), coordinates))
         
         self.calc_potential(coordinates, False)
@@ -69,12 +70,12 @@ class Gameboard():
             self.check_winner(line)
 
         if self.completed:
-            print(fg(9)+'Game concluded! Winner is player {}, congratulations!'.format(int(self.winner))+fg.rs)     
+            custom_print('Game concluded! Winner is player {}, congratulations!'.format(int(self.winner)),9)     
             return 2, self.winner
         
         if not 0 in self.board[0,:,:]:
             self.completed = True
-            print(fg(9)+'The game board is full and noone won... it\'s a tie!'+fg.rs)
+            custom_print('The game board is full and noone won... it\'s a tie!',9)
             return 3, None
         
         return 1, None
@@ -160,8 +161,8 @@ class Gameboard():
             self.board[2,coordinates[0],coordinates[1]] = -999
             return
 
-        potential += 1/round(abs(((self.size[0]-1)/2)-coordinates[0])+0.1)
-        potential += 1/round(abs(((self.size[1]-1)/2)-coordinates[1])+0.1)
+        potential += 1/(abs(((self.size[0]-1)/2)-coordinates[0])+0.1)
+        potential += 1/(abs(((self.size[1]-1)/2)-coordinates[1])+0.1)
         
         potential1 = potential
         potential2 = potential
@@ -189,7 +190,7 @@ class Gameboard():
         possibilities = np.nonzero(priority_matrix >= minv)
         
         for coordinate in zip(possibilities[0],possibilities[1]):
-            if self.debug==2: print(fg(11)+'Player {} is considering coordinates {} with value {}...'.format(player,coordinate,priority_matrix[coordinate])+fg.rs)
+            if self.debug==2: custom_print('Player {} is considering coordinates {} with value {}...'.format(player,coordinate,priority_matrix[coordinate]),11)
             p = (priority_matrix[coordinate] - minv) * r.random()
             if p>maxp:
                 maxp = p
@@ -202,4 +203,7 @@ class Gameboard():
     
     def set_player(self,player,dp,dpt,st):
         self.players[player-1].set_parameters(dp,dpt,st)
+
+def custom_print(message,color):
+    print(fg(color)+t.strftime("%Y-%m-%d %H:%M:%S", t.localtime())+' - '+message+fg.rs)
         
